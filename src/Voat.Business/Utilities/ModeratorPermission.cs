@@ -106,8 +106,9 @@ namespace Voat.Utilities
 
             switch (action)
             {
-                case ModeratorAction.InviteMods:
-                case ModeratorAction.RemoveMods:
+                case ModeratorAction.InviteModerator:
+                case ModeratorAction.AddModerator:
+                case ModeratorAction.RemoveModerator:
                 case ModeratorAction.ModifySettings:
                 case ModeratorAction.AssignStickies:
                     result = levelEvaluator(level, new ModeratorLevel[] { ModeratorLevel.Owner, ModeratorLevel.Moderator });

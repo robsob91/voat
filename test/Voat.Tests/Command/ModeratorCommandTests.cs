@@ -39,183 +39,11 @@ namespace Voat.Tests.CommandTests
     [TestClass]
     public class ModeratorCommandTests : BaseUnitTest
     {
-
-        public Dictionary<string, SubverseModerator> InitializeSubverseModerators(string subName)
-        {
-            Dictionary<string, SubverseModerator> _subMods = new Dictionary<string, SubverseModerator>();
-
-            using (var context = new VoatDataContext())
-            {
-
-                var sub = context.Subverse.Add(new Subverse()
-                {
-                    Name = subName,
-                    Title = $"v/{subName}",
-                    Description = $"Unit Test Sub: {subName}",
-                    SideBar = $"Unit Test Sub: {subName}",
-                    //Type = "link",
-                    IsAnonymized = false,
-                    CreationDate = DateTime.UtcNow.AddDays(-7),
-                });
-                context.SaveChanges();
-
-                var modName = "";
-                SubverseModerator mod = null;
-
-                modName = "system";
-                mod = context.SubverseModerator.Add(new SubverseModerator()
-                {
-                    Power = 1,
-                    UserName = modName,
-                    Subverse = subName,
-                    CreatedBy = "PuttItOut",
-                    CreationDate = DateTime.UtcNow.AddDays(100) //we want to ensure no-one can remove system at L1
-                }).Entity;
-                context.SaveChanges();
-                _subMods.Add(modName, mod);
-
-                modName = "Creator";
-                mod = context.SubverseModerator.Add(new SubverseModerator()
-                {
-                    Power = 1,
-                    UserName = modName,
-                    Subverse = subName,
-                    CreatedBy = null,
-                    CreationDate = null
-                }).Entity;
-                context.SaveChanges();
-                _subMods.Add(modName, mod);
-
-                modName = "L1-0";
-                mod = context.SubverseModerator.Add(new SubverseModerator()
-                {
-                    Power = 1,
-                    UserName = modName,
-                    Subverse = subName,
-                    CreatedBy = "Creator",
-                    CreationDate = DateTime.UtcNow.AddDays(-100)
-                }).Entity;
-                context.SaveChanges();
-                _subMods.Add(modName, mod);
-
-                modName = "L1-1";
-                mod = context.SubverseModerator.Add(new SubverseModerator()
-                {
-                    Power = 1,
-                    UserName = modName,
-                    Subverse = subName,
-                    CreatedBy = "L1-0",
-                    CreationDate = DateTime.UtcNow
-                }).Entity;
-                context.SaveChanges();
-                _subMods.Add(modName, mod);
-
-                modName = "L2-0";
-                mod = context.SubverseModerator.Add(new SubverseModerator()
-                {
-                    Power = 2,
-                    UserName = modName,
-                    Subverse = subName,
-                    CreatedBy = "Creator",
-                    CreationDate = DateTime.UtcNow.AddDays(-10)
-                }).Entity;
-                context.SaveChanges();
-                _subMods.Add(modName, mod);
-
-                modName = "L2-1";
-                mod = context.SubverseModerator.Add(new SubverseModerator()
-                {
-                    Power = 2,
-                    UserName = modName,
-                    Subverse = subName,
-                    CreatedBy = "Creator",
-                    CreationDate = DateTime.UtcNow
-                }).Entity;
-                context.SaveChanges();
-                _subMods.Add(modName, mod);
-
-                modName = "L3-0";
-                mod = context.SubverseModerator.Add(new SubverseModerator()
-                {
-                    Power = 3,
-                    UserName = modName,
-                    Subverse = subName,
-                    CreatedBy = "Creator",
-                    CreationDate = DateTime.UtcNow.AddDays(-10)
-                }).Entity;
-                context.SaveChanges();
-                _subMods.Add(modName, mod);
-
-                modName = "L3-1";
-                mod = context.SubverseModerator.Add(new SubverseModerator()
-                {
-                    Power = 3,
-                    UserName = modName,
-                    Subverse = subName,
-                    CreatedBy = "Creator",
-                    CreationDate = DateTime.UtcNow
-                }).Entity;
-                context.SaveChanges();
-                _subMods.Add(modName, mod);
-
-
-                modName = "L4-0";
-                mod = context.SubverseModerator.Add(new SubverseModerator()
-                {
-                    Power = 4,
-                    UserName = modName,
-                    Subverse = subName,
-                    CreatedBy = "Creator",
-                    CreationDate = DateTime.UtcNow.AddDays(-10)
-                }).Entity;
-                context.SaveChanges();
-                _subMods.Add(modName, mod);
-
-                modName = "L4-1";
-                mod = context.SubverseModerator.Add(new SubverseModerator()
-                {
-                    Power = 4,
-                    UserName = modName,
-                    Subverse = subName,
-                    CreatedBy = "Creator",
-                    CreationDate = DateTime.UtcNow
-                }).Entity;
-                context.SaveChanges();
-                _subMods.Add(modName, mod);
-
-                modName = "L99-0";
-                mod = context.SubverseModerator.Add(new SubverseModerator()
-                {
-                    Power = 99,
-                    UserName = modName,
-                    Subverse = subName,
-                    CreatedBy = "Creator",
-                    CreationDate = DateTime.UtcNow.AddDays(-10)
-                }).Entity;
-                context.SaveChanges();
-                _subMods.Add(modName, mod);
-
-                modName = "L99-1";
-                mod = context.SubverseModerator.Add(new SubverseModerator()
-                {
-                    Power = 99,
-                    UserName = modName,
-                    Subverse = subName,
-                    CreatedBy = "Creator",
-                    CreationDate = DateTime.UtcNow
-                }).Entity;
-                context.SaveChanges();
-                _subMods.Add(modName, mod);
-
-            }
-            return _subMods;
-        }
-
         [TestMethod]
         public async Task ModeratorRemovals_Denials_NonOwner()
         {
             string subName = "testDenials";
-            var mods = InitializeSubverseModerators(subName);
+            var mods = TestDataInitializer.InitializeSubverseModerators(subName);
 
             RemoveModeratorByRecordIDCommand cmd = null;
             CommandResponse<RemoveModeratorResponse> response = null;
@@ -284,7 +112,7 @@ namespace Voat.Tests.CommandTests
         public async Task ModeratorRemovals_Allowed_NonOwner()
         {
             string subName = "testAllowed";
-            var mods = InitializeSubverseModerators(subName);
+            var mods = TestDataInitializer.InitializeSubverseModerators(subName);
 
             RemoveModeratorByRecordIDCommand cmd = null;
             CommandResponse<RemoveModeratorResponse> response = null;
@@ -314,7 +142,7 @@ namespace Voat.Tests.CommandTests
         public async Task ModeratorRemovals_Allowed_Owner()
         {
             string subName = "testAllowedOwner";
-            var mods = InitializeSubverseModerators(subName);
+            var mods = TestDataInitializer.InitializeSubverseModerators(subName);
 
             RemoveModeratorByRecordIDCommand cmd = null;
             CommandResponse<RemoveModeratorResponse> response = null;
@@ -344,7 +172,7 @@ namespace Voat.Tests.CommandTests
         public async Task ModeratorRemovals_Denials_Owner()
         {
             string subName = "testDeniedOwner";
-            var mods = InitializeSubverseModerators(subName);
+            var mods = TestDataInitializer.InitializeSubverseModerators(subName);
 
             RemoveModeratorByRecordIDCommand cmd = null;
             CommandResponse<RemoveModeratorResponse> response = null;
@@ -381,7 +209,7 @@ namespace Voat.Tests.CommandTests
         public async Task ModeratorRemovals_Denials_System()
         {
             string subName = "testSystemDenials";
-            var mods = InitializeSubverseModerators(subName);
+            var mods = TestDataInitializer.InitializeSubverseModerators(subName);
 
             RemoveModeratorByRecordIDCommand cmd = null;
             CommandResponse<RemoveModeratorResponse> response = null;
@@ -438,23 +266,32 @@ namespace Voat.Tests.CommandTests
         public async Task ModeratorModification_Command_Tests()
         {
 
-            var subverse = "AddRemoveMods";
+            var modSubverse = "AddRemoveMods";
             var modName = "joeyMasters";
-            var subMods = InitializeSubverseModerators(subverse);
-            var user = (IPrincipal)null;
+            var modPower = 2;
+            var subMods = TestDataInitializer.InitializeSubverseModerators(modSubverse);
+            var user = TestHelper.SetPrincipal("system");
 
             var addMod = new AddModeratorCommand(
                 new SubverseModerator()
                 {
-                    Subverse = subverse,
-                    Power = 2,
+                    Subverse = modSubverse,
+                    Power = modPower,
                     UserName = modName,
                     CreatedBy = "system"
                 }).SetUserContext(user);
             var addResponse = await addMod.Execute();
 
-            VoatAssert.IsValid(addResponse, Status.Denied);
+            VoatAssert.IsValid(addResponse);
 
+            using (var db = new VoatDataContext())
+            {
+                var modRecord = db.SubverseModerator.FirstOrDefault(x => x.Subverse == modSubverse && x.UserName == modName);
+                Assert.IsNotNull(modRecord);
+                Assert.AreEqual(modRecord.Subverse, modSubverse);
+                Assert.AreEqual(modRecord.UserName, modName);
+                Assert.AreEqual(modRecord.Power, modPower);
+            }
 
         }
     }

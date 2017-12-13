@@ -4,7 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Voat.Caching;
 using Voat.Common;
+using Voat.Configuration;
 using Voat.Domain.Command;
 using Voat.Domain.Models;
 using Voat.Utilities;
@@ -215,10 +217,40 @@ namespace Voat.Data
             return Task.FromResult(subverseLinkFlairs.AsEnumerable());
         }
 
-        public async Task<CommandResponse> AddModerator(Voat.Data.Models.SubverseModerator subverseModerator)
+        public async Task<CommandResponse> AddModerator(Data.Models.SubverseModerator subverseModerator)
         {
             DemandAuthentication();
-            return CommandResponse.FromStatus(Status.NotProcessed);
+
+            var subverse = ToCorrectSubverseCasing(subverseModerator.Subverse);
+
+            if (String.IsNullOrEmpty(subverse))
+            {
+                return CommandResponse.FromStatus(Status.Invalid, Localization.SubverseNotFound(subverse));
+            }
+
+            var userName = ToCorrectUserNameCasing(subverseModerator.UserName);
+            if (String.IsNullOrEmpty(subverseModerator.UserName))
+            {
+                return CommandResponse.FromStatus(Status.Invalid, Localization.UserNotFound(subverseModerator.UserName));
+            }
+
+
+            if (!ModeratorPermission.HasPermission(User, subverseModerator.Subverse, ModeratorAction.AddModerator))
+            {
+                return CommandResponse.FromStatus(Status.Denied, Localization.UserNotGrantedPermission());
+            }
+
+            var subMod = new Data.Models.SubverseModerator() {
+                CreatedBy = User.Identity.Name,
+                CreationDate = CurrentDate,
+                Power = subverseModerator.Power,
+                UserName = subverseModerator.UserName,
+                Subverse = subverse
+            };
+            _db.SubverseModerator.Add(subMod);
+            await _db.SaveChangesAsync();
+
+            return CommandResponse.FromStatus(Status.Success);
 
         }
         public async Task<CommandResponse> RemoveModerator(RemoveSubverseModeratorModel removeModerator)
@@ -254,7 +286,7 @@ namespace Voat.Data
             }
 
             // check if caller has clearance to remove a moderator
-            if (!ModeratorPermission.HasPermission(User, subverse.Name, Domain.Models.ModeratorAction.RemoveMods))
+            if (!ModeratorPermission.HasPermission(User, subverse.Name, Domain.Models.ModeratorAction.RemoveModerator))
             {
                 return new CommandResponse<RemoveModeratorResponse>(response, Status.Denied, "User does not have permissions to execute action");
             }
@@ -349,6 +381,232 @@ namespace Voat.Data
                 return new CommandResponse<RemoveModeratorResponse>(response, Status.Denied, errorMessage);
             }
         }
+
+        #region ADD/REMOVE MODERATORS LOGIC FROM CONTROLLER
+
+        public async Task<CommandResponse> AcceptModeratorInvitation(int invitationId)
+        {
+            int maximumOwnedSubs = VoatSettings.Instance.MaximumOwnedSubs;
+
+            //TODO: These errors are not friendly - please update to redirect or something
+            // check if there is an invitation for this user with this id
+            var userInvitation = _db.ModeratorInvitation.Find(invitationId);
+            if (userInvitation == null)
+            {
+                return CommandResponse.FromStatus(Status.Invalid, Localization.InvalidModInvite());
+                //return ErrorView(new ErrorViewModel() { Title = "Moderator Invite Not Found", Description = "The moderator invite is no longer valid", Footer = "Where did it go?" });
+            }
+
+            // check if logged in user is actually the invited user
+            if (!User.Identity.Name.IsEqual(userInvitation.Recipient))
+            {
+                return CommandResponse.FromStatus(Status.Denied);
+                //return ErrorView(ErrorViewModel.GetErrorViewModel(HttpStatusCode.Unauthorized));
+            }
+
+            // check if user is over modding limits
+            var amountOfSubsUserModerates = _db.SubverseModerator.Where(s => s.UserName.ToLower() == User.Identity.Name.ToLower());
+            if (amountOfSubsUserModerates.Any())
+            {
+                if (amountOfSubsUserModerates.Count() >= maximumOwnedSubs)
+                {
+                    return CommandResponse.FromStatus(Status.Denied, $"Sorry, you can not own or moderate more than {maximumOwnedSubs} subverses.");
+                    //return ErrorView(new ErrorViewModel() { Title = "Maximum Moderation Level Exceeded", Description = $"Sorry, you can not own or moderate more than {maximumOwnedSubs} subverses.", Footer = "That's too bad" });
+                }
+            }
+
+            // check if subverse exists
+            var subverse = _db.Subverse.FirstOrDefault(s => s.Name.ToLower() == userInvitation.Subverse.ToLower());
+            if (subverse == null)
+            {
+                return CommandResponse.FromStatus(Status.Invalid, Localization.SubverseNotFound());
+                //return ErrorView(ErrorViewModel.GetErrorViewModel(ErrorType.SubverseNotFound));
+                //return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            }
+
+            // check if user is already a moderator of this sub
+            var userModerating = _db.SubverseModerator.Where(s => s.Subverse.ToLower() == userInvitation.Subverse.ToLower() && s.UserName.ToLower() == User.Identity.Name.ToLower());
+            if (userModerating.Any())
+            {
+                _db.ModeratorInvitation.Remove(userInvitation);
+                _db.SaveChanges();
+                return CommandResponse.FromStatus(Status.Invalid, $"You are currently already a moderator of this subverse");
+                //return ErrorView(new ErrorViewModel() { Title = "You = Moderator * 2?", Description = "You are currently already a moderator of this subverse", Footer = "How much power do you want?" });
+            }
+
+            // add user as moderator as specified in invitation
+            var subAdm = new Data.Models.SubverseModerator
+            {
+                Subverse = subverse.Name,
+                UserName = UserHelper.OriginalUsername(userInvitation.Recipient),
+                Power = userInvitation.Power,
+                CreatedBy = UserHelper.OriginalUsername(userInvitation.CreatedBy),
+                CreationDate = Repository.CurrentDate
+            };
+
+            _db.SubverseModerator.Add(subAdm);
+
+            // notify sender that user has accepted the invitation
+            var message = new Domain.Models.SendMessage()
+            {
+                Sender = $"v/{subverse.Name}",
+                Subject = $"Moderator invitation for v/{subverse.Name} accepted",
+                Recipient = userInvitation.CreatedBy,
+                Message = $"User {User.Identity.Name} has accepted your invitation to moderate subverse v/{subverse.Name}."
+            };
+            var cmd = new SendMessageCommand(message).SetUserContext(User);
+            await cmd.Execute();
+
+            //clear mod cache
+            CacheHandler.Instance.Remove(CachingKey.SubverseModerators(subverse.Name));
+
+            // delete the invitation from database
+            _db.ModeratorInvitation.Remove(userInvitation);
+            _db.SaveChanges();
+
+            return CommandResponse.Successful();
+            //return RedirectToAction("Update", "SubverseModeration", new { subverse = subverse.Name });
+        }
         
+        public async Task<CommandResponse> InviteModerator(Data.Models.SubverseModerator subverseAdmin)
+        {
+            //if (!ModelState.IsValid)
+            //{
+            //    return View(subverseAdmin);
+            //}
+
+            // check if caller can add mods, if not, deny posting
+            if (!ModeratorPermission.HasPermission(User, subverseAdmin.Subverse, Domain.Models.ModeratorAction.InviteModerator))
+            {
+                return CommandResponse.FromStatus(Status.Denied, Localization.UserNotGrantedPermission());
+                //return RedirectToAction("Index", "Home");
+            }
+
+            subverseAdmin.UserName = subverseAdmin.UserName.TrimSafe();
+            Data.Models.Subverse subverseModel = null;
+
+            ////lots of premature retuns so wrap the common code
+            //var sendFailureResult = new Func<string, CommandResponse>(errorMessage =>
+            //{
+            //    ViewBag.SubverseModel = subverseModel;
+            //    ViewBag.SubverseName = subverseAdmin.Subverse;
+            //    ViewBag.SelectedSubverse = string.Empty;
+            //    ModelState.AddModelError(string.Empty, errorMessage);
+            //    SetNavigationViewModel(subverseAdmin.Subverse);
+
+            //    return View("~/Views/Subverses/Admin/AddModerator.cshtml",
+            //    new SubverseModeratorViewModel
+            //    {
+            //        UserName = subverseAdmin.UserName,
+            //        Power = subverseAdmin.Power
+            //    }
+            //    );
+            //});
+
+            // prevent invites to the current moderator
+            if (User.Identity.Name.IsEqual(subverseAdmin.UserName))
+            {
+                return CommandResponse.FromStatus(Status.Denied, "Can not add yourself as a moderator");
+            }
+
+            string originalRecipientUserName = UserHelper.OriginalUsername(subverseAdmin.UserName);
+            // prevent invites to the current moderator
+            if (String.IsNullOrEmpty(originalRecipientUserName))
+            {
+                return CommandResponse.FromStatus(Status.Denied, "User can not be found");
+            }
+
+            // get model for selected subverse
+            subverseModel = DataCache.Subverse.Retrieve(subverseAdmin.Subverse);
+            if (subverseModel == null)
+            {
+                return CommandResponse.FromStatus(Status.Invalid, Localization.SubverseNotFound());
+                //return ErrorView(ErrorViewModel.GetErrorViewModel(ErrorType.SubverseNotFound));
+            }
+
+            if ((subverseAdmin.Power < 1 || subverseAdmin.Power > 4) && subverseAdmin.Power != 99)
+            {
+                return CommandResponse.FromStatus(Status.Denied, "Only powers levels 1 - 4 and 99 are supported currently");
+            }
+
+            //check current mod level and invite level and ensure they are a lower level
+            var currentModLevel = ModeratorPermission.Level(User, subverseModel.Name);
+            if (subverseAdmin.Power <= (int)currentModLevel && currentModLevel != Domain.Models.ModeratorLevel.Owner)
+            {
+                return CommandResponse.FromStatus(Status.Denied, "Sorry, but you can only add moderators that are a lower level than yourself");
+            }
+
+            int maximumOwnedSubs = VoatSettings.Instance.MaximumOwnedSubs;
+
+            // check if the user being added is not already a moderator of 10 subverses
+            var currentlyModerating = _db.SubverseModerator.Where(a => a.UserName == originalRecipientUserName).ToList();
+
+            //SubverseModeratorViewModel tmpModel;
+            if (currentlyModerating.Count <= maximumOwnedSubs)
+            {
+                // check that user is not already moderating given subverse
+                var isAlreadyModerator = _db.SubverseModerator.FirstOrDefault(a => a.UserName == originalRecipientUserName && a.Subverse == subverseAdmin.Subverse);
+
+                if (isAlreadyModerator == null)
+                {
+                    // check if this user is already invited
+                    var userModeratorInvitations = _db.ModeratorInvitation.Where(i => i.Recipient.ToLower() == originalRecipientUserName.ToLower() && i.Subverse.ToLower() == subverseModel.Name.ToLower());
+                    if (userModeratorInvitations.Any())
+                    {
+                        return CommandResponse.FromStatus(Status.Denied, "Sorry, the user is already invited to moderate this subverse");
+                    }
+
+                    // send a new moderator invitation
+                    Data.Models.ModeratorInvitation modInv = new Data.Models.ModeratorInvitation
+                    {
+                        CreatedBy = User.Identity.Name,
+                        CreationDate = Repository.CurrentDate,
+                        Recipient = originalRecipientUserName,
+                        Subverse = subverseAdmin.Subverse,
+                        Power = subverseAdmin.Power
+                    };
+
+                    _db.ModeratorInvitation.Add(modInv);
+                    _db.SaveChanges();
+                    int invitationId = modInv.ID;
+                    var invitationBody = new StringBuilder();
+
+                    //v/{subverse}/about/moderatorinvitations/accept/{invitationId}
+
+                    string acceptInviteUrl = VoatUrlFormatter.BuildUrlPath(null, new PathOptions(true, true), $"/v/{subverseModel.Name}/about/moderatorinvitations/accept/{invitationId}");
+
+                    invitationBody.Append("Hello,");
+                    invitationBody.Append(Environment.NewLine);
+                    invitationBody.Append($"@{User.Identity.Name} invited you to moderate v/" + subverseAdmin.Subverse + ".");
+                    invitationBody.Append(Environment.NewLine);
+                    invitationBody.Append(Environment.NewLine);
+                    invitationBody.Append($"Please visit the following link if you want to accept this invitation: {acceptInviteUrl}");
+                    invitationBody.Append(Environment.NewLine);
+                    invitationBody.Append(Environment.NewLine);
+                    invitationBody.Append("Thank you.");
+
+                    var cmd = new SendMessageCommand(new Domain.Models.SendMessage()
+                    {
+                        Sender = $"v/{subverseAdmin.Subverse}",
+                        Recipient = originalRecipientUserName,
+                        Subject = $"v/{subverseAdmin.Subverse} moderator invitation",
+                        Message = invitationBody.ToString()
+                    }, true).SetUserContext(User);
+                    await cmd.Execute();
+
+                    return CommandResponse.Successful();
+                }
+                else
+                {
+                    return CommandResponse.FromStatus(Status.Denied, "Sorry, the user is already moderating this subverse");
+                }
+            }
+            else
+            {
+                return CommandResponse.FromStatus(Status.Denied, "Sorry, the user is already moderating a maximum of " + maximumOwnedSubs + " subverses");
+            }
+        }
+        
+        #endregion ADD/REMOVE MODERATORS LOGIC
     }
 }

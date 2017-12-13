@@ -330,7 +330,7 @@ namespace Voat.Controllers
                 //return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
             }
 
-            if (!ModeratorPermission.HasPermission(User, subverse, Domain.Models.ModeratorAction.InviteMods))
+            if (!ModeratorPermission.HasPermission(User, subverse, Domain.Models.ModeratorAction.InviteModerator))
             {
                 return RedirectToAction("Index", "Home");
             }
@@ -537,7 +537,7 @@ namespace Voat.Controllers
                 return HybridError(ErrorViewModel.GetErrorViewModel(ErrorType.NotFound));
                 //return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
             }
-            if (!ModeratorPermission.HasPermission(User, moderatorInvitation.Subverse, Domain.Models.ModeratorAction.InviteMods))
+            if (!ModeratorPermission.HasPermission(User, moderatorInvitation.Subverse, Domain.Models.ModeratorAction.InviteModerator))
             {
                 return RedirectToAction("SubverseModerators");
             }
@@ -578,7 +578,7 @@ namespace Voat.Controllers
 
             // check if caller has clearance to remove a moderator invitation
             //if (!UserHelper.IsUserSubverseAdmin(User.Identity.Name, subverse.Name) || invitationToBeRemoved.Recipient == User.Identity.Name) return RedirectToAction("Index", "Home");
-            if (!ModeratorPermission.HasPermission(User, subverse.Name, Domain.Models.ModeratorAction.InviteMods))
+            if (!ModeratorPermission.HasPermission(User, subverse.Name, Domain.Models.ModeratorAction.InviteModerator))
             {
                 return RedirectToAction("Index", "Home");
             }
@@ -928,7 +928,7 @@ namespace Voat.Controllers
                 //return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
             }
 
-            if (!ModeratorPermission.HasPermission(User, subverse, Domain.Models.ModeratorAction.InviteMods))
+            if (!ModeratorPermission.HasPermission(User, subverse, Domain.Models.ModeratorAction.InviteModerator))
             {
                 return RedirectToAction("Index", "Home");
             }
@@ -953,7 +953,7 @@ namespace Voat.Controllers
             }
 
             // check if caller can add mods, if not, deny posting
-            if (!ModeratorPermission.HasPermission(User, subverseAdmin.Subverse, Domain.Models.ModeratorAction.InviteMods))
+            if (!ModeratorPermission.HasPermission(User, subverseAdmin.Subverse, Domain.Models.ModeratorAction.InviteModerator))
             {
                 return RedirectToAction("Index", "Home");
             }
@@ -1098,7 +1098,7 @@ namespace Voat.Controllers
                 return RedirectToAction("NotFound","Error");
             }
 
-            if (!ModeratorPermission.HasPermission(User, subModerator.Subverse, Domain.Models.ModeratorAction.RemoveMods))
+            if (!ModeratorPermission.HasPermission(User, subModerator.Subverse, Domain.Models.ModeratorAction.RemoveModerator))
             {
                 return RedirectToAction("Index", "Home");
             }

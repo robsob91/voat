@@ -17,7 +17,7 @@ namespace Voat.Domain.Command
 
         protected override Task<CommandResponse> ProtectedExecute()
         {
-            using (var repo = new Repository())
+            using (var repo = new Repository(User))
             {
                 return repo.AddModerator(_model);
             }

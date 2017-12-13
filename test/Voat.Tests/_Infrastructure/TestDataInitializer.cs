@@ -25,6 +25,7 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
 using System.IO;
@@ -799,6 +800,177 @@ namespace Voat.Tests.Infrastructure
             {
                 CreateUser(String.Format(userNameTemplate, i.ToString().PadLeft(2, '0')));
             }
+        }
+
+        public static Dictionary<string, SubverseModerator> InitializeSubverseModerators(string subName)
+        {
+            Dictionary<string, SubverseModerator> _subMods = new Dictionary<string, SubverseModerator>();
+
+            using (var context = new VoatDataContext())
+            {
+
+                var sub = context.Subverse.Add(new Subverse()
+                {
+                    Name = subName,
+                    Title = $"v/{subName}",
+                    Description = $"Unit Test Sub: {subName}",
+                    SideBar = $"Unit Test Sub: {subName}",
+                    //Type = "link",
+                    IsAnonymized = false,
+                    CreationDate = DateTime.UtcNow.AddDays(-7),
+                });
+                context.SaveChanges();
+
+                var modName = "";
+                SubverseModerator mod = null;
+
+                modName = "system";
+                mod = context.SubverseModerator.Add(new SubverseModerator()
+                {
+                    Power = 1,
+                    UserName = modName,
+                    Subverse = subName,
+                    CreatedBy = "PuttItOut",
+                    CreationDate = DateTime.UtcNow.AddDays(100) //we want to ensure no-one can remove system at L1
+                }).Entity;
+                context.SaveChanges();
+                _subMods.Add(modName, mod);
+
+                modName = "Creator";
+                mod = context.SubverseModerator.Add(new SubverseModerator()
+                {
+                    Power = 1,
+                    UserName = modName,
+                    Subverse = subName,
+                    CreatedBy = null,
+                    CreationDate = null
+                }).Entity;
+                context.SaveChanges();
+                _subMods.Add(modName, mod);
+
+                modName = "L1-0";
+                mod = context.SubverseModerator.Add(new SubverseModerator()
+                {
+                    Power = 1,
+                    UserName = modName,
+                    Subverse = subName,
+                    CreatedBy = "Creator",
+                    CreationDate = DateTime.UtcNow.AddDays(-100)
+                }).Entity;
+                context.SaveChanges();
+                _subMods.Add(modName, mod);
+
+                modName = "L1-1";
+                mod = context.SubverseModerator.Add(new SubverseModerator()
+                {
+                    Power = 1,
+                    UserName = modName,
+                    Subverse = subName,
+                    CreatedBy = "L1-0",
+                    CreationDate = DateTime.UtcNow
+                }).Entity;
+                context.SaveChanges();
+                _subMods.Add(modName, mod);
+
+                modName = "L2-0";
+                mod = context.SubverseModerator.Add(new SubverseModerator()
+                {
+                    Power = 2,
+                    UserName = modName,
+                    Subverse = subName,
+                    CreatedBy = "Creator",
+                    CreationDate = DateTime.UtcNow.AddDays(-10)
+                }).Entity;
+                context.SaveChanges();
+                _subMods.Add(modName, mod);
+
+                modName = "L2-1";
+                mod = context.SubverseModerator.Add(new SubverseModerator()
+                {
+                    Power = 2,
+                    UserName = modName,
+                    Subverse = subName,
+                    CreatedBy = "Creator",
+                    CreationDate = DateTime.UtcNow
+                }).Entity;
+                context.SaveChanges();
+                _subMods.Add(modName, mod);
+
+                modName = "L3-0";
+                mod = context.SubverseModerator.Add(new SubverseModerator()
+                {
+                    Power = 3,
+                    UserName = modName,
+                    Subverse = subName,
+                    CreatedBy = "Creator",
+                    CreationDate = DateTime.UtcNow.AddDays(-10)
+                }).Entity;
+                context.SaveChanges();
+                _subMods.Add(modName, mod);
+
+                modName = "L3-1";
+                mod = context.SubverseModerator.Add(new SubverseModerator()
+                {
+                    Power = 3,
+                    UserName = modName,
+                    Subverse = subName,
+                    CreatedBy = "Creator",
+                    CreationDate = DateTime.UtcNow
+                }).Entity;
+                context.SaveChanges();
+                _subMods.Add(modName, mod);
+
+
+                modName = "L4-0";
+                mod = context.SubverseModerator.Add(new SubverseModerator()
+                {
+                    Power = 4,
+                    UserName = modName,
+                    Subverse = subName,
+                    CreatedBy = "Creator",
+                    CreationDate = DateTime.UtcNow.AddDays(-10)
+                }).Entity;
+                context.SaveChanges();
+                _subMods.Add(modName, mod);
+
+                modName = "L4-1";
+                mod = context.SubverseModerator.Add(new SubverseModerator()
+                {
+                    Power = 4,
+                    UserName = modName,
+                    Subverse = subName,
+                    CreatedBy = "Creator",
+                    CreationDate = DateTime.UtcNow
+                }).Entity;
+                context.SaveChanges();
+                _subMods.Add(modName, mod);
+
+                modName = "L99-0";
+                mod = context.SubverseModerator.Add(new SubverseModerator()
+                {
+                    Power = 99,
+                    UserName = modName,
+                    Subverse = subName,
+                    CreatedBy = "Creator",
+                    CreationDate = DateTime.UtcNow.AddDays(-10)
+                }).Entity;
+                context.SaveChanges();
+                _subMods.Add(modName, mod);
+
+                modName = "L99-1";
+                mod = context.SubverseModerator.Add(new SubverseModerator()
+                {
+                    Power = 99,
+                    UserName = modName,
+                    Subverse = subName,
+                    CreatedBy = "Creator",
+                    CreationDate = DateTime.UtcNow
+                }).Entity;
+                context.SaveChanges();
+                _subMods.Add(modName, mod);
+
+            }
+            return _subMods;
         }
     }
 }
