@@ -18,7 +18,7 @@ namespace Voat.Voting.Outcomes
     {
         public override async Task<CommandResponse> Execute()
         {
-            var m = new Data.Models.SubverseModerator();
+            var m = new Domain.Models.RemoveSubverseModeratorModel();
             m.UserName = UserName;
             m.Subverse = Subverse;
             

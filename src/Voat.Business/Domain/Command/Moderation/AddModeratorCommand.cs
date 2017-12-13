@@ -2,11 +2,12 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using Voat.Data;
 using Voat.Data.Models;
 
 namespace Voat.Domain.Command
 {
-    public class AddModeratorCommand : Domain.Command.Command<CommandResponse>
+    public class AddModeratorCommand : ModifyModeratorCommand
     {
         public SubverseModerator _model;
         public AddModeratorCommand(SubverseModerator model)
@@ -16,7 +17,10 @@ namespace Voat.Domain.Command
 
         protected override Task<CommandResponse> ProtectedExecute()
         {
-            throw new NotImplementedException();
+            using (var repo = new Repository())
+            {
+                return repo.AddModerator(_model);
+            }
         }
     }
 }

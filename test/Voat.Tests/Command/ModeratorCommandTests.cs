@@ -26,6 +26,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
 using Voat.Common;
@@ -49,9 +50,9 @@ namespace Voat.Tests.CommandTests
                 var sub = context.Subverse.Add(new Subverse()
                 {
                     Name = subName,
-                    Title = "v/modPerms",
-                    Description = "Test Mod Perms",
-                    SideBar = "Test Mod Perms",
+                    Title = $"v/{subName}",
+                    Description = $"Unit Test Sub: {subName}",
+                    SideBar = $"Unit Test Sub: {subName}",
                     //Type = "link",
                     IsAnonymized = false,
                     CreationDate = DateTime.UtcNow.AddDays(-7),
@@ -429,6 +430,31 @@ namespace Voat.Tests.CommandTests
             cmd = new RemoveModeratorByRecordIDCommand(mods[targetUserName].ID, false).SetUserContext(user);
             response = await cmd.Execute();
             Assert.AreEqual(Status.Denied, response.Status, $"Status mismatch on {originUserName} to {targetUserName}");
+
+        }
+
+
+        [TestMethod]
+        public async Task ModeratorModification_Command_Tests()
+        {
+
+            var subverse = "AddRemoveMods";
+            var modName = "joeyMasters";
+            var subMods = InitializeSubverseModerators(subverse);
+            var user = (IPrincipal)null;
+
+            var addMod = new AddModeratorCommand(
+                new SubverseModerator()
+                {
+                    Subverse = subverse,
+                    Power = 2,
+                    UserName = modName,
+                    CreatedBy = "system"
+                }).SetUserContext(user);
+            var addResponse = await addMod.Execute();
+
+            VoatAssert.IsValid(addResponse, Status.Denied);
+
 
         }
     }

@@ -3,14 +3,15 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using Voat.Data.Models;
+using Voat.Domain.Models;
 
 namespace Voat.Domain.Command
 {
-    public class RemoveModeratorCommand : Domain.Command.Command<CommandResponse>
+    public class RemoveModeratorCommand : ModifyModeratorCommand
     {
-        public SubverseModerator _model;
+        private RemoveSubverseModeratorModel _model;
 
-        public RemoveModeratorCommand(SubverseModerator model)
+        public RemoveModeratorCommand(RemoveSubverseModeratorModel model)
         {
             _model = model;
         }
