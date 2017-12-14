@@ -15,11 +15,11 @@ namespace Voat.Domain.Command
             _model = model;
         }
 
-        protected override Task<CommandResponse> ProtectedExecute()
+        protected override async Task<CommandResponse> ProtectedExecute()
         {
             using (var repo = new Repository(User))
             {
-                return repo.AddModerator(_model);
+                return await repo.AddModerator(_model);
             }
         }
     }

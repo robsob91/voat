@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using Voat.Data;
 using Voat.Data.Models;
 using Voat.Domain.Models;
 
@@ -16,9 +17,12 @@ namespace Voat.Domain.Command
             _model = model;
         }
 
-        protected override Task<CommandResponse> ProtectedExecute()
+        protected override async Task<CommandResponse> ProtectedExecute()
         {
-            throw new NotImplementedException();
+            using (var repo = new Repository(User))
+            {
+                return await repo.RemoveModerator(_model);
+            }
         }
     }
 }

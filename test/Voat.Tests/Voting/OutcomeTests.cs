@@ -5,6 +5,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Voat.Data.Models;
+using Voat.Tests.Infrastructure;
+using Voat.Utilities;
 using Voat.Voting.Outcomes;
 
 namespace Voat.Tests.Voting
@@ -20,8 +22,9 @@ namespace Voat.Tests.Voting
             addModOutcome.UserName = "UnitTestUser01";
             addModOutcome.Level = Domain.Models.ModeratorLevel.Owner;
             addModOutcome.Subverse = "whatever";
+            var user = TestHelper.SetPrincipal("Admin");
 
-            var response = await addModOutcome.Execute();
+            var response = await addModOutcome.Execute(user);
             VoatAssert.IsValid(response);
 
             using (var db = new VoatDataContext())
@@ -31,14 +34,13 @@ namespace Voat.Tests.Voting
                 Assert.AreEqual(addModOutcome.UserName, record.UserName);
                 Assert.AreEqual(addModOutcome.Subverse, record.Subverse);
                 Assert.AreEqual((int)addModOutcome.Level, record.Power);
-
             }
 
             var removeModOutcome = new RemoveModeratorOutcome();
             removeModOutcome.UserName = addModOutcome.UserName;
             removeModOutcome.Subverse = addModOutcome.Subverse;
 
-            response = await removeModOutcome.Execute();
+            response = await removeModOutcome.Execute(user);
             VoatAssert.IsValid(response);
 
             using (var db = new VoatDataContext())

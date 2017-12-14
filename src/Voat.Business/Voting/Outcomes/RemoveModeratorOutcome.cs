@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
+using Voat.Common;
 using Voat.Data;
 using Voat.Domain.Command;
 using Voat.Domain.Models;
@@ -16,13 +18,13 @@ namespace Voat.Voting.Outcomes
     [Outcome(Enabled = true, Name = "Remove Moderator", Description = "Remove a moderator from a subverse")]
     public class RemoveModeratorOutcome : ModeratorOutcome, IValidatableObject
     {
-        public override async Task<CommandResponse> Execute()
+        public override async Task<CommandResponse> Execute(IPrincipal principal)
         {
             var m = new Domain.Models.RemoveSubverseModeratorModel();
             m.UserName = UserName;
             m.Subverse = Subverse;
             
-            var cmd = new RemoveModeratorCommand(m);
+            var cmd = new RemoveModeratorCommand(m).SetUserContext(principal);
             var result = await cmd.Execute();
             return result;
         }

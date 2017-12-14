@@ -37,6 +37,8 @@ using Voat.Data.Models;
 using Voat.Domain.Command;
 using Voat.Tests.Data;
 using Voat.Utilities;
+using Dapper;
+using Microsoft.EntityFrameworkCore;
 
 namespace Voat.Tests.Infrastructure
 {
@@ -637,7 +639,11 @@ namespace Voat.Tests.Infrastructure
 
             #endregion
 
-           
+            #region Create Roles 
+
+            InitializeRoles();
+
+            #endregion
             //******************************************************************************************************************
             // ADD YOUR STUFF BELOW - DO NOT EDIT THE ABOVE CODE - NOT EVEN ONCE - I'LL SO FIGHT YOU IF YOU DO AND I FIGHT DIRTY
             //******************************************************************************************************************
@@ -738,7 +744,7 @@ namespace Voat.Tests.Infrastructure
                 return submission.ID;
             }
         }
-        public static void CreateUser(string userName, DateTime? registrationDate = null)
+        public static void CreateUser(string userName, DateTime? registrationDate = null, string role = null)
         {
             //SchemaInitializerApplicationDbContext.ReferenceEquals(null, new object());
 
@@ -751,11 +757,16 @@ namespace Voat.Tests.Infrastructure
                 string pwd = userName.GetUnitTestUserPassword();
                 
                 var result = manager.Create(user, pwd);
-
+                
                 if (!result.Succeeded)
                 {
                     throw new Exception("Error creating test user " + userName);
                 }
+
+            if (!String.IsNullOrEmpty(role))
+            {
+                var x = manager.AddToRoleAsync(user, role).Result;
+            }
            // }
         }
         public static void VoteContent(VoatDataContext context, Domain.Models.ContentType contentType, int id, int count, Domain.Models.VoteValue vote)
@@ -971,6 +982,33 @@ namespace Voat.Tests.Infrastructure
 
             }
             return _subMods;
+        }
+
+        public static Dictionary<string, Domain.Models.UserRole> InitializeRoles(string prefix = null)
+        {
+            var users = new Dictionary<string, Domain.Models.UserRole>();
+            prefix = prefix ?? "";
+            //create roles 
+            var roles = Enum.GetNames(typeof(Domain.Models.UserRole));
+            using (var context = new IdentityDataContext())
+            {
+                foreach (var role in roles)
+                {
+                    var connection = context.Database.GetDbConnection();
+                    connection.Execute("INSERT INTO \"AspNetRoles\" (\"Id\", \"Name\", \"ConcurrencyStamp\", \"NormalizedName\") " +
+                                        "SELECT @id, @role, NULL, @roleNormalized " +
+                                        "WHERE NOT EXISTS(SELECT * FROM \"AspNetRoles\" WHERE \"NormalizedName\" = @roleNormalized)", 
+                                        new { id = Guid.NewGuid().ToString().ToUpper(), role = role, roleNormalized = role.ToUpper() });
+                }
+            }
+            //create users 
+            foreach (var role in roles)
+            {
+                var name = $"{prefix}{role}";
+                CreateUser(name, role: role);
+            }
+
+            return users;
         }
     }
 }

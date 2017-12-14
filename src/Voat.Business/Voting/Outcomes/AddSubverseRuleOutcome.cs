@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
 using Voat.Domain.Command;
@@ -16,7 +17,7 @@ namespace Voat.Voting.Outcomes
         public string Description { get; set; }
 
 
-        public override Task<CommandResponse> Execute()
+        public override Task<CommandResponse> Execute(IPrincipal principal)
         {
             throw new NotImplementedException();
         }
@@ -31,7 +32,7 @@ namespace Voat.Voting.Outcomes
     {
         public int RuleSetID { get; set; }
 
-        public override Task<CommandResponse> Execute()
+        public override Task<CommandResponse> Execute(IPrincipal principal)
         {
             throw new NotImplementedException();
         }
@@ -46,7 +47,7 @@ namespace Voat.Voting.Outcomes
     {
         public int RuleSetID { get; set; }
 
-        public override Task<CommandResponse> Execute()
+        public override Task<CommandResponse> Execute(IPrincipal principal)
         {
             throw new NotImplementedException();
         }

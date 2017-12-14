@@ -11,6 +11,11 @@ namespace Voat.Common
     public interface ISecurityContext
     {
         string UserName { get; }
+        IActivityContext Context { get; set; }
+
+        void DemandAuthentication();
+
+        IPrincipal User { get; }
     }
     public abstract class SecurityContext<T> : ISecurityContext where T : class, IPrincipal
     {
@@ -29,13 +34,13 @@ namespace Voat.Common
         {
             _context = new ActivityContext(principal);
         }
-        public IPrincipal User {
+        public virtual IPrincipal User {
             get
             {
                 return _context.User;
             }
         }
-        public IActivityContext Context 
+        public virtual IActivityContext Context 
         {
             get
             {

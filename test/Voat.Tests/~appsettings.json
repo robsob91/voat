@@ -172,7 +172,15 @@
             "apiKeyCreationEnabled": true,
             "redirectToSiteDomain": false,
             "origin": "UI",
-
+            //Roles
+            "enableRoles": true,
+            "enabledRoles": [
+                "GlobalAdmin",
+                "Admin",
+                "DelegateAdmin",
+                "GlobalBans",
+                "GlobalJanitor"
+            ],
             //Image Settings
             "thumbnailsEnabled": true,
             "thumbnailSize": {

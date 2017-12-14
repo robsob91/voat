@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
+using Voat.Common;
 using Voat.Configuration;
 using Voat.Data;
 using Voat.Domain.Command;
@@ -16,7 +18,7 @@ namespace Voat.Voting.Outcomes
     [Outcome(Enabled = true, Name = "Add Moderator", Description = "Add a moderator to a subverse")]
     public class AddModeratorOutcome : ModeratorOutcome, IValidatableObject
     {
-        public override async Task<CommandResponse> Execute()
+        public override async Task<CommandResponse> Execute(IPrincipal principal)
         {
             var m = new Data.Models.SubverseModerator();
             m.UserName = UserName;
@@ -24,7 +26,7 @@ namespace Voat.Voting.Outcomes
             m.Power = (int)Level;
             m.CreatedBy = VoatSettings.Instance.SiteUserName;
 
-            var cmd = new AddModeratorCommand(m);
+            var cmd = new AddModeratorCommand(m).SetUserContext(principal);
             var result = await cmd.Execute();
             return result;
         }

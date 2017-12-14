@@ -247,6 +247,7 @@ namespace Voat.Data
                 UserName = subverseModerator.UserName,
                 Subverse = subverse
             };
+
             _db.SubverseModerator.Add(subMod);
             await _db.SaveChangesAsync();
 
@@ -256,7 +257,10 @@ namespace Voat.Data
         public async Task<CommandResponse> RemoveModerator(RemoveSubverseModeratorModel removeModerator)
         {
             DemandAuthentication();
-            return CommandResponse.FromStatus(Status.NotProcessed);
+
+            //Just send logic to main method
+            var subverseModeratorRecord = _db.SubverseModerator.FirstOrDefault(x => x.Subverse == removeModerator.Subverse && x.UserName == removeModerator.UserName);
+            return await RemoveModerator(subverseModeratorRecord?.ID ?? -1, true);
 
         }
         public async Task<CommandResponse<RemoveModeratorResponse>> RemoveModerator(int subverseModeratorRecordID, bool allowSelfRemovals)
