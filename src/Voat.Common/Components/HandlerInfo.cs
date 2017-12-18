@@ -17,6 +17,11 @@ namespace Voat.Common.Configuration
         /// </summary>
         public string Type { get; set; }
         /// <summary>
+        /// Value for primitive (string, int, long, etc.)
+        /// </summary>
+        public string Value { get; set; }
+
+        /// <summary>
         /// Constructor arguments. Formatted string parsed by ArgumentParser.Parse(value)
         /// </summary>
         public string Arguments { get; set; }
@@ -30,6 +35,18 @@ namespace Voat.Common.Configuration
             var type = System.Type.GetType(this.Type);
             if (type != null)
             {
+                if (!String.IsNullOrEmpty(Value))
+                {
+                    //we assume this is a primative direct value
+                    var parsed = ArgumentParser.Parse(Value);
+                    var value = parsed[0];
+                    if (value != null && value.GetType() != type)
+                    {
+                        throw new InvalidOperationException($"Declared type {type.Name} does not match value type {value.GetType().Name}");
+                    }
+                    return (T)parsed[0];
+                }
+
                 return Construct<T>(type, Arguments, Properties);
             }
             throw new InvalidOperationException(String.Format("Can not find type: {0}", this.Type));
